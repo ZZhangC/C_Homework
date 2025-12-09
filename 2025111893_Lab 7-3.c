@@ -14,6 +14,7 @@ typedef struct Event {
 
 typedef struct Event_Status {
     Event event;
+    int index : 7;
     int flag_can_be_arranged : 1;
 } Event_Status;
 
@@ -46,6 +47,24 @@ void swap(void* ptr1, void* ptr2, unsigned int len) {
         *((char*)(ptr1)+i) ^= *((char*)(ptr2)+i);
         *((char*)(ptr2)+i) ^= *((char*)(ptr1)+i);
         *((char*)(ptr1)+i) ^= *((char*)(ptr2)+i);
+    }
+}
+
+void printEvent(struct Event_Status* events, int count) {
+    for (int i = 0; i < count; i++) {
+        for (int j = count - 1; j > i; j--) {
+            if (events[j].event.begin_hour < events[j - 1].event.begin_hour) {
+                swap((void*)&(events[j]), (void*)&(events[j - 1]), sizeof(Event_Status));
+            }
+            else if (events[j].event.begin_hour == events[j - 1].event.begin_hour) {
+                if (events[j].event.end_hour < events[j - 1].event.end_hour)
+                    swap((void*)&(events[j]), (void*)&(events[j - 1]), sizeof(Event_Status));
+            }
+        }
+    }
+    printf("%8s\t%6s\t%6s\n", "Index", "Begin", "End");
+    for (int i = 0; i < count; i++) {
+        printf("Event%2d:\t%6d\t%6d\n", events[i].index, events[i].event.begin_hour, events[i].event.end_hour);
     }
 }
 
@@ -100,20 +119,11 @@ int main() {
             return -1;
         }
         events[i].flag_can_be_arranged = 1;
+        events[i].index = i + 1;
     }
 
     //任务1
-    for (int i = 0; i < count; i++) {
-        for (int j = count - 1; j > i; j--) {
-            if (events[j].event.begin_hour < events[j - 1].event.begin_hour) {
-                swap((void*)&(events[j]), (void*)&(events[j - 1]), sizeof(Event_Status));
-            }
-            else if (events[j].event.begin_hour == events[j - 1].event.begin_hour) {
-                if (events[j].event.end_hour < events[j - 1].event.end_hour)
-                    swap((void*)&(events[j]), (void*)&(events[j - 1]), sizeof(Event_Status));
-            }
-        }
-    }
+    printEvent(events, count);
 
     //任务2
     for (int i = 0; i < count; i++) {
@@ -135,7 +145,7 @@ int main() {
     //出于稳定性考虑，把“是/否”换成了“Yes/No”
     printf("%8s\t%6s\t%6s\t%10s\n", "Index", "Begin", "End", "Available");
     for (int i = 0; i < count; i++) {
-        printf("Event%2d:\t%6d\t%6d\t%10s\n", i + 1, events[i].event.begin_hour, events[i].event.end_hour, events[i].flag_can_be_arranged ? "Yes" : "No");
+        printf("Event%2d:\t%6d\t%6d\t%10s\n", events[i].index, events[i].event.begin_hour, events[i].event.end_hour, events[i].flag_can_be_arranged ? "Yes" : "No");
     }
     return 0;
 }
