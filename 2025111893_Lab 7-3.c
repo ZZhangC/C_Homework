@@ -14,7 +14,7 @@ typedef struct Event {
 
 typedef struct Event_Status {
     Event event;
-    int index : 7;
+    unsigned int index : 7;
     int flag_can_be_arranged : 1;
 } Event_Status;
 
