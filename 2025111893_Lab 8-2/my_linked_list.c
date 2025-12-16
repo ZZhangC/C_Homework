@@ -8,31 +8,9 @@
 #include "my_linked_list_general.h"
 #include "my_linked_list.h"
 
- /***************************结构***************************/
- //双向链表
-typedef struct Node {
-    Node* previous;
-    Node* next;
-    char* data;
-} Node;
-//菜单
-typedef struct Menu {
-    int* opt_index;
-    char** options;
-    assignable_func* opt_functions;
-
-    int opt_num;
-    int flag_end;
-} Menu;
-//输入数据
-typedef struct Input_Data {
-    int flag_type;
-    int integer;
-    char* string;
-    int str_len;
-} Input_Data;
-
-/***************************通用***************************/
+/**********************************************************
+ ***************************通用***************************
+ **********************************************************/
 //从8-1抄过来的获取输入函数
 char* get_input() {
     char* input = NULL;
@@ -85,36 +63,40 @@ Input_Data* get_arg(char* _buf, int len) {
     }
 
     //赋值
-    switch (is_digit) {
-    case 1:
+    char* new_str = NULL;
+    //是数字就存，不是就不存
+    if (is_digit) {
         //设置数据类型
         res->flag_type = TYPE_INT;
         //获取一个数字
-        int sign = _buf[index] == '-' ? -1 : 1;
-        while (_buf[index] >= '0' && _buf[index] <= '9') {
+        tmp_index = index;
+        int sign = _buf[tmp_index] == '-' ? -1 : 1;
+        while (_buf[tmp_index] >= '0' && _buf[tmp_index] <= '9') {
             res->integer *= 10;
-            res->integer += (int)(_buf[index]) - (int)'0';
-            _buf[index] = ' ';
-            index++;
+            res->integer += (int)(_buf[tmp_index]) - (int)'0';
+            tmp_index++;
         }
         res->integer *= sign;
-        break;
-
-    case 0:
-        //设置数据类型
-        res->flag_type = TYPE_STR;
-        //获取一个字符串
-        while (_buf[index] >= '0' && _buf[index] <= '9') {
-            char* new_str = (char*)malloc(res->str_len + 1);
-            memcpy(new_str, res->string, res->str_len);
-            new_str[res->str_len] = _buf[index];
-            free(res->string);
-            res->string = new_str;
-            index++;
-            res->str_len++;
-        }
-        break;
     }
+    else {
+        res->flag_type = TYPE_STR;
+    }
+    //把字符串格式存起来
+    while (_buf[index] != ' ' && index < len) {
+        new_str = (char*)malloc(res->str_len + 1);
+        memcpy(new_str, res->string, res->str_len);
+        new_str[res->str_len] = _buf[index];
+        free(res->string);
+        res->string = new_str;
+        _buf[index] = ' ';
+        index++;
+        res->str_len++;
+    }
+    new_str = (char*)malloc(res->str_len + 1);
+    memcpy(new_str, res->string, res->str_len);
+    new_str[res->str_len] = '\0';
+    free(res->string);
+    res->string = new_str;
 
     return res;
 }
@@ -127,15 +109,155 @@ void swap(void* ptr1, void* ptr2, unsigned int len) {
     }
 }
 
-/*************************链表部分*************************/
+/**********************************************************
+ ***************************链表***************************
+ **********************************************************/
 //初始化一个值全为0的链表
 Node* node_get_new() {
     Node* new_node = (Node*)malloc(sizeof(Node));
     memset(new_node, 0, sizeof(Node));
     return new_node;
 }
+void* node_set_data(Node* _node, const char* _str) {
+    //这里不直接让_node->data等于_str的原因是防止输入的数据不是const char*类型，而且便于销毁
+    free(_node->data);
+    _node->data = malloc(strlen(_str) + 1);
+    memcpy(_node->data, _str, strlen(_str));
+    _node->data[strlen(_str)] = '\0';
+    return _node->data;
+}
+void node_destructor(Node** _node) {
+    free((*_node)->data);
+    free(*_node);
+}
+int list_insert(Node** _start, int _pos, const char* _str) {
+    if (_pos == 0) {
+        Node* new_node = node_get_new();
+        node_set_data(new_node, _str);
+        new_node->next = *_start;
+        if (*_start != NULL) {
+            (*_start)->previous = new_node;
+        }
+        *_start = new_node;
+        return 0;
+    }
+    Node* iterator = list_find_by_index(*_start, _pos - 1);
+    if (iterator == NULL)
+        return -1;
+    Node* new_node = node_get_new();
+    node_set_data(new_node, _str);
+    if (iterator->next == NULL) {
+        iterator->next = new_node;
+        new_node->previous = iterator;
+    }
+    else {
+        Node* tmp = iterator->next;
+        iterator->next = new_node;
+        new_node->previous = iterator;
+        new_node->next = tmp;
+        tmp->previous = new_node;
+    }
+    return 0;
+}
+int list_delete(Node** _start, const char* _str) {
+    Node* iterator = list_find(*_start, _str);
+    if (iterator == NULL)
+        return -1;
+    if (iterator->previous == NULL) {
+        if(iterator->next != NULL) {
+            *_start = iterator->next;
+            (*_start)->previous = NULL;
+        }
+        else
+            *_start = NULL;
+        node_destructor(&iterator);
+        iterator = NULL;
+    }
+    else {
+        iterator->previous->next = iterator->next;
+        iterator->next->previous = iterator->previous;
+        node_destructor(&iterator);
+        iterator = NULL;
+    }
+    return 0;
+}
+Node* list_find(Node* _start, const char* _str) {
+    Node* iterator = _start;
+    if (iterator == NULL)
+        return NULL;
+    while (iterator != NULL) {
+        if(strlen(_str) != strlen(iterator->data)) {
+            iterator = iterator->next;
+            continue;
+        }
+            
+        for (int i = 0; i < strlen(_str); i++) {
+            if ((iterator->data)[i] != _str[i]) {
+                iterator = iterator->next;
+                continue;
+            }
+        }
+        break;
+    }
+    return iterator;
+}
+Node* list_find_by_index(Node* _start, int _pos) {
+    Node* iterator = _start;
+    if (iterator == NULL)
+        return NULL;
+    for (int i = 0; i < _pos; i++) {
+        if (iterator != NULL)
+            iterator = iterator->next;
+    }
+    return iterator;
+}
+int list_update(Node* _start, int _pos, const char* _str) {
+    Node* iterator = list_find_by_index(_start, _pos);
+    if (iterator == NULL)
+        return -1;
+    void* data = node_set_data(iterator, _str);
+    if(data == NULL)
+        return -1;
+    return 0;
+}
+int list_swap(Node** _start, int _pos1, int _pos2) {
+    Node* iterator1 = list_find_by_index(*_start, _pos1);
+    Node* iterator2 = list_find_by_index(*_start, _pos2);
+    printf("aa");//debug
+    if (iterator1 == NULL || iterator2 == NULL)
+        return -1;
+    swap(&(iterator1->data), &(iterator2->data), sizeof(char*));
+    return 0;
+}
+void list_destructor(Node** _start) {
+    Node* iterator = *_start;
+    if (iterator == NULL)
+        return;
+    while (iterator->next != NULL) {
+        iterator = iterator->next;
+    }
+    while (iterator->previous != NULL) {
+        iterator = iterator->previous;
+        node_destructor(&(iterator->next));
+    }
+    node_destructor(&iterator);
+    iterator = NULL;
+}
+void list_show(void** _list_start) {
+    printf("Now the list is: ");
+    Node* iterator = *_list_start;
+    while (iterator != NULL) {
+        printf("%s", iterator->data);
+        if (iterator->next != NULL)
+            printf("->");
+        iterator = iterator->next;
+    }
+    printf("\n");
+}
 
-/*************************菜单部分*************************/
+/**********************************************************
+ ***************************菜单***************************
+ **********************************************************/
 //初始化一个值全为0的菜单
 Menu* menu_init() {
     Menu* new_menu = (Menu*)malloc(sizeof(Menu));
@@ -157,28 +279,42 @@ void menu_assign_option(Menu* _menu, int _index, const char* _option, assignable
 
     for (int i = 0; i < _opt_num; i++) {
         if (_index > 0) {
-            if (*(_menu->opt_index + i) > _index)
+            if (*(_menu->opt_index + i) > _index || *(_menu->opt_index + i) <= 0)
                 _insert_pos = i;
+            else if (i == _opt_num - 1)
+                _insert_pos = _opt_num;
         }
         else if (_index <= 0) {
-            if ((*(_menu->opt_index + i) <= 0 && *(_menu->opt_index + i) < _index) || *(_menu->opt_index + i) > 0)
+            if ((*(_menu->opt_index + i) <= 0 && *(_menu->opt_index + i) < _index))
                 _insert_pos = i;
+            else if (i == _opt_num - 1)
+                _insert_pos = _opt_num;
         }
     }
 
-    memcpy(_opt_index, _menu->opt_index, sizeof(int*) * _insert_pos);
-    memcpy(_options, _menu->options, sizeof(char*) * _insert_pos);
-    memcpy(_opt_functions, _menu->opt_functions, sizeof(assignable_func) * _insert_pos);
+    if(_insert_pos != _opt_num) {
+        memcpy(_opt_index, _menu->opt_index, sizeof(int*) * _insert_pos);
+        memcpy(_options, _menu->options, sizeof(char*) * _insert_pos);
+        memcpy(_opt_functions, _menu->opt_functions, sizeof(assignable_func) * _insert_pos);
 
 
-    *(_opt_index + _insert_pos) = _index;
-    *(_options + _insert_pos) = (char*)_option;
-    *(_opt_functions + _insert_pos) = _func;
+        *(_opt_index + _insert_pos) = _index;
+        *(_options + _insert_pos) = (char*)_option;
+        *(_opt_functions + _insert_pos) = _func;
 
-    memcpy(_opt_index + _insert_pos + 1, _menu->opt_index + _insert_pos, sizeof(int*) * (_opt_num - _insert_pos));
-    memcpy(_options + _insert_pos + 1, _menu->options + _insert_pos, sizeof(char*) * (_opt_num - _insert_pos));
-    memcpy(_opt_functions + _insert_pos + 1, _menu->opt_functions + _insert_pos, sizeof(assignable_func) * (_opt_num - _insert_pos));
+        memcpy(_opt_index + _insert_pos + 1, _menu->opt_index + _insert_pos, sizeof(int*) * (_opt_num - _insert_pos));
+        memcpy(_options + _insert_pos + 1, _menu->options + _insert_pos, sizeof(char*) * (_opt_num - _insert_pos));
+        memcpy(_opt_functions + _insert_pos + 1, _menu->opt_functions + _insert_pos, sizeof(assignable_func) * (_opt_num - _insert_pos));
+    }
+    else {
+        memcpy(_opt_index, _menu->opt_index, sizeof(int*) * _opt_num);
+        memcpy(_options, _menu->options, sizeof(char*) * _opt_num);
+        memcpy(_opt_functions, _menu->opt_functions, sizeof(assignable_func) * _opt_num);
 
+        *(_opt_index + _opt_num) = _index;
+        *(_options + _opt_num) = (char*)_option;
+        *(_opt_functions + _opt_num) = _func;
+    }
     free(_menu->opt_index);
     free(_menu->options);
     free(_menu->opt_functions);
@@ -198,7 +334,7 @@ void menu_refresh(Menu* _menu) {
         if (*(_menu->opt_index + i) == 0)
             printf("\n");
     }
-    printf("请输入你的选择：\n");
+    printf("Please enter an option:\n");
 }
 //调用指定的函数
 void menu_call_func(Menu* _menu, int _index, void* _target) {
@@ -218,7 +354,7 @@ void menu_destructor(Menu* _menu) {
     _menu->flag_end = 1;
 }
 //使用该函数进入主循环
-void menu_exec(Menu* _menu, void* _backend_target) {
+void menu_exec(Menu* _menu, void** _backend_target) {
     while (1) {
         if (_menu->flag_end) {
             break;
@@ -229,5 +365,7 @@ void menu_exec(Menu* _menu, void* _backend_target) {
         if (data->flag_type != TYPE_INT)
             continue;
         menu_call_func(_menu, data->integer, _backend_target);
+        printf("Press enter to continue...\n");
+        get_input();
     }
 }

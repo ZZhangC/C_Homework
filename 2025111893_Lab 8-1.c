@@ -38,6 +38,7 @@ void append_existing(Node* start, Node* node) {
 }
 
 void set_data(Node* node, const char* str) {
+    free(node->data);
     char* data = NULL;
     if (strlen(str) > 50) {
         data = malloc(51);
