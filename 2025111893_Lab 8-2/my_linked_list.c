@@ -26,6 +26,8 @@ char* get_input() {
         len++;
         c = getchar();
     }
+    if (input == NULL)
+        input = "\0";
     return input;
 }
 //从7-3抄过来再修改的输入处理函数
@@ -362,7 +364,8 @@ void menu_exec(Menu* _menu, void** _backend_target) {
         menu_refresh(_menu);
         char* input = get_input();
         Input_Data* data = get_arg(input, strlen(input));
-        if (data->flag_type != TYPE_INT)
+        Input_Data* data_check = get_arg(input, strlen(input));
+        if (data->flag_type != TYPE_INT || data_check->flag_type != TYPE_NUL)
             continue;
         menu_call_func(_menu, data->integer, _backend_target);
         printf("Press enter to continue...\n");
