@@ -1,7 +1,11 @@
+/*
+ * 2025111893_Lab 8-2/main.c
+ * 相当于一个Demo
+ * Author: ZZhangC
+ * Date: 15/12/2025
+ */
 #include "my_linked_list.h"
 #include "my_linked_list_general.h"
-
-
 
 void insert_data(Menu* _menu, void** _list_start) {
     printf("Input the index and data you want to insert:\n");
